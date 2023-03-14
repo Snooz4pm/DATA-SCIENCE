@@ -1,0 +1,17 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+# Load the data from CSV file into a pandas DataFrame
+df = pd.read_csv('data.csv.txt')
+
+# Clean the data by replacing missing values with the mean of the column
+df.fillna(df.mean(), inplace=True)
+# Calculate the average income by gender
+avg_income_by_gender = df.groupby('name')['income'].mean()
+
+# Plot a bar chart of the average income by gender
+avg_income_by_gender.plot(kind='bar')
+plt.title('Average Income by Gender')
+plt.xlabel('name')
+plt.ylabel('Average income')
+plt.show()
