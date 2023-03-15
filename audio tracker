@@ -1,0 +1,50 @@
+import pyaudio
+import wave
+import librosa
+import numpy as np
+from sklearn.externals import joblib
+
+# Load the trained machine learning model
+model = joblib.load('model.pkl')
+
+# Set up PyAudio to capture audio from the headset's microphone
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+RECORD_SECONDS = 5
+
+p = pyaudio.PyAudio()
+stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+
+# Record audio from the headset's microphone and save it as a WAV file
+frames = []
+for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
+    data = stream.read(CHUNK)
+    frames.append(data)
+    
+stream.stop_stream()
+stream.close()
+p.terminate()
+
+wf = wave.open('audio.wav', 'wb')
+wf.setnchannels(CHANNELS)
+wf.setsampwidth(p.get_sample_size(FORMAT))
+wf.setframerate(RATE)
+wf.writeframes(b''.join(frames))
+wf.close()
+
+# Load the audio file and extract features using LibROSA
+audio, sr = librosa.load('audio.wav', sr=44100)
+spec = librosa.feature.melspectrogram(audio, sr=sr, n_fft=2048, hop_length=512)
+spec_db = librosa.power_to_db(spec, ref=np.max)
+
+# Apply the trained machine learning model to the audio features
+label = model.predict(spec_db.reshape(1, -1))[0]
+
+# Output the result to the console
+print('The audio is:', label)
+
+# Output the result to a text file
+with open('result.txt', 'w') as f:
+    f.write('The audio is: ' + label)
