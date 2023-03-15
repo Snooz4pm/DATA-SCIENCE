@@ -1,0 +1,59 @@
+import numpy as np
+import librosa
+import os
+import random
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.externals import joblib
+
+# Define the path to the audio dataset
+data_path = '/path/to/audio/dataset/'
+
+# Define the parameters for the feature extraction
+sr = 22050
+n_fft = 2048
+hop_length = 512
+n_mels = 128
+
+# Load the audio files and extract features using LibROSA
+X = []
+y = []
+for label in os.listdir(data_path):
+    if label.startswith('.'):
+        continue
+    label_path = os.path.join(data_path, label)
+    for file_name in os.listdir(label_path):
+        if not file_name.endswith('.wav'):
+            continue
+        file_path = os.path.join(label_path, file_name)
+        audio, _ = librosa.load(file_path, sr=sr)
+        spec = librosa.feature.melspectrogram(audio, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+        spec_db = librosa.power_to_db(spec, ref=np.max)
+        X.append(spec_db)
+        y.append(label)
+
+# Convert the labels to numerical values
+le = LabelEncoder()
+y_encoded = le.fit_transform(y)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+# Define the machine learning pipeline
+clf = Pipeline([
+    ('classifier', RandomForestClassifier(n_estimators=100, random_state=42))
+])
+
+# Train the machine learning model
+clf.fit(X_train, y_train)
+
+# Evaluate the model on the testing set
+y_pred = clf.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print('Accuracy:', accuracy)
+
+# Save the model to a file
+joblib.dump(clf, 'model.pkl')
